@@ -1,12 +1,12 @@
-# Project screenshots
+# Project cover images
 
-Drop a screenshot for each project here (e.g. `quickbite.png`), then open
-[js/data.js](../../js/data.js) and set that project's `image` field to the
+Project covers are shipped as static files and are not uploaded by visitors.
+To update a cover, add the image to this folder, then open
+[js/data.js](../../js/data.js) and set the project's `image` field to its
 path, for example:
 
 ```js
 {title:"QuickBite", ..., image:"images/projects/quickbite.png"}
 ```
 
-Leave `image` as `null` to keep the "Add screenshot →" placeholder.
-Recommended: 16:9 crop (e.g. 1280×720), under ~300KB.
+Use a wide image where possible; project cards crop covers to a 16:9 frame.

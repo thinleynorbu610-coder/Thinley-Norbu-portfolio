@@ -10,133 +10,174 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
 const real = u => !!u && u !== '#';
 const arrow = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H8M17 7v9"/></svg>';
 
-/* ══════════════════════════════════════════════════════════
-   CLICK-TO-UPLOAD IMAGES
-   Click a project screenshot or certificate tile to pick a
-   file from your computer. It's resized in the browser and
-   saved to localStorage — no server needed — so it shows up
-   instantly, but only in the browser/device you uploaded it
-   from. To ship a photo to every visitor, put the file in
-   images/projects/ or images/certificates/ and set its
-   "image" path in js/data.js instead (see that file's header).
-   ══════════════════════════════════════════════════════════ */
-const IMG_PREFIX = 'portfolioImg:';
-const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
-const getStoredImage = key => { try{ return localStorage.getItem(IMG_PREFIX+key); }catch(e){ return null; } };
-const setStoredImage = (key,url) => { try{ localStorage.setItem(IMG_PREFIX+key,url); return true; }catch(e){ return false; } };
-const removeStoredImage = key => { try{ localStorage.removeItem(IMG_PREFIX+key); }catch(e){} };
-
-function resizeImage(file, maxDim, quality){
-  return new Promise((resolve,reject)=>{
-    const reader = new FileReader();
-    reader.onerror = () => reject(reader.error || new Error('Could not read file'));
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error('Could not decode image'));
-      img.onload = () => {
-        let w = img.naturalWidth, h = img.naturalHeight;
-        if (w > maxDim || h > maxDim) {
-          if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
-          else { w = Math.round(w * maxDim / h); h = maxDim; }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-      img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-/* markup for one image tile: shows the stored/custom image if present,
-   else the given fallback path (from data.js), else an "Add …" placeholder */
-function uploadSlot(key, fallbackSrc, alt, placeholderText){
-  const stored = getStoredImage(key);
-  const src = stored || fallbackSrc;
-  const inner = src
-    ? `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy" style="width:100%;height:100%;object-fit:cover">`
-    : `<span class="ph">${esc(placeholderText)}</span>`;
-  const remove = stored ? `<button class="img-remove" type="button" aria-label="Remove image">✕</button>` : '';
-  return { attr: ` data-imgkey="${esc(key)}"`, html: `<label class="upload-slot" title="Click to add an image">${inner}<input type="file" accept="image/*" hidden></label>${remove}` };
-}
-
-/* wires click-to-upload + remove for every image tile inside a container;
-   re-renders via `reapply` after a change so the new image shows immediately */
-function wireImageUploads(containerSel, reapply){
-  const container = $(containerSel);
-  container.addEventListener('change', async e => {
-    const input = e.target;
-    if (!input.matches('input[type=file]')) return;
-    const slot = input.closest('[data-imgkey]');
-    const file = input.files[0];
-    input.value = '';
-    if (!slot || !file) return;
-    const key = slot.dataset.imgkey;
-    try {
-      const dataUrl = await resizeImage(file, 1200, .82);
-      if (!setStoredImage(key, dataUrl)) { alert("Couldn't save that image — your browser storage may be full."); return; }
-      reapply();
-    } catch (err) {
-      alert("Couldn't load that image. Try a different file.");
-    }
-  });
-  container.addEventListener('click', e => {
-    const btn = e.target.closest('.img-remove');
-    if (!btn) return;
-    e.preventDefault();
-    const slot = btn.closest('[data-imgkey]');
-    if (!slot) return;
-    removeStoredImage(slot.dataset.imgkey);
-    reapply();
-  });
-}
-
 $('#stats').innerHTML = DATA.stats.map(s =>
   `<div class="glass stat"><div class="n">${esc(s.n)}</div><div class="l">${esc(s.l)}</div></div>`).join('');
 
 $('#timeline').innerHTML = DATA.timeline.map(t =>
   `<li class="${t.done?'done':''}"><div class="y">${esc(t.year)}</div><div class="t">${esc(t.title)}</div><div class="d">${esc(t.desc)}</div></li>`).join('');
 
+let projectCategory = 'All';
+let activeProject = 0;
+const projectStage = $('#projectStage');
+const projectCount = $('#projectCount');
+const projectDots = $('#projectDots');
+const projectFilters = $('#projFilters');
+
+function getVisibleProjects(){
+  return DATA.projects.filter(p=>projectCategory==='All'||p.category===projectCategory);
+}
+
 function renderProjects(){
-  $('#projectGrid').innerHTML = DATA.projects.map(p => {
+  const projects = getVisibleProjects();
+  if (!projects.length) {
+    projectStage.innerHTML = '<p class="empty">No projects in this category yet.</p>';
+    projectDots.innerHTML = '';
+    projectCount.textContent = '00 / 00';
+    return;
+  }
+  activeProject = (activeProject + projects.length) % projects.length;
+  const offset = Math.min(projectStage.clientWidth * .39, 500);
+  projectStage.style.setProperty('--slide-offset', `${offset}px`);
+  projectStage.innerHTML = projects.map((p,index) => {
+    const projectTags = p.focus || p.tech;
     const links = [
       real(p.github)?`<a class="mini" href="${esc(p.github)}" target="_blank" rel="noopener">GitHub ${arrow}</a>`:'',
-      real(p.demo)?`<a class="mini" href="${esc(p.demo)}" target="_blank" rel="noopener">Live Demo ${arrow}</a>`:'',
+      real(p.demo)?`<a class="mini" href="${esc(p.demo)}" ${p.demo.startsWith('#')?'':'target="_blank" rel="noopener"'}>${esc(p.demoLabel || 'Live Demo')} ${arrow}</a>`:'',
       real(p.details)?`<a class="mini" href="${esc(p.details)}" target="_blank" rel="noopener">Details ${arrow}</a>`:''
     ].join('');
-    const slot = uploadSlot('proj:'+slug(p.title), p.image, p.title, 'Add screenshot →');
-    return `<article class="glass card" data-cat="${esc(p.category)}">
-    <div class="shot"${slot.attr}>${slot.html}<span class="state ${esc(p.status)}">${esc(p.statusLabel)}</span></div>
+    const image = p.image
+      ? `<img class="project-image" src="${esc(p.image)}" alt="${esc(p.title)} project preview" loading="lazy">`
+      : '<div class="project-image-empty" aria-hidden="true"></div>';
+    const position = index===activeProject ? 'active' : index===(activeProject-1+projects.length)%projects.length ? 'prev' : index===(activeProject+1)%projects.length ? 'next' : 'hidden';
+    return `<article class="glass card project-slide is-${position}" data-position="${position}" aria-hidden="${position!=='active'}" ${position==='active'?'':'inert'}>
+    <div class="shot">${image}<span class="state ${esc(p.status)}">${esc(p.statusLabel)}</span></div>
     <div class="card-body"><h3>${esc(p.title)}</h3><p>${esc(p.desc)}</p>
-    <div class="stack">${p.tech.map(t=>`<span>${esc(t)}</span>`).join('')}</div>
+    <div class="stack">${projectTags.map(t=>`<span>${esc(t)}</span>`).join('')}</div>
     ${links?`<div class="card-links">${links}</div>`:''}</div></article>`;
   }).join('');
+  projectDots.innerHTML = projects.map((p,index)=>
+    `<button class="project-dot${index===activeProject?' is-active':''}" type="button" data-index="${index}" aria-label="Show project ${index+1}: ${esc(p.title)}" aria-pressed="${index===activeProject}"></button>`).join('');
+  projectCount.textContent = `${String(activeProject+1).padStart(2,'0')} / ${String(projects.length).padStart(2,'0')}`;
 }
 renderProjects();
+
+projectFilters.dataset.current = projectCategory;
+projectFilters.innerHTML = ['All','Web','UI/UX','Backend','Data','Academic'].map((category,index)=>
+  `<button class="chip" data-v="${esc(category)}" aria-pressed="${index===0}">${esc(category)}</button>`).join('');
+projectFilters.addEventListener('click',e=>{
+  const chip=e.target.closest('.chip'); if(!chip) return;
+  projectCategory=chip.dataset.v;
+  activeProject=0;
+  projectFilters.dataset.current=projectCategory;
+  $$('#projFilters .chip').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.v===projectCategory)));
+  renderProjects();
+});
+function moveProject(direction){
+  const projects=getVisibleProjects();
+  if(!projects.length) return;
+  activeProject=(activeProject+direction+projects.length)%projects.length;
+  projectStage.dataset.swapDirection=direction>0?'next':'prev';
+  renderProjects();
+}
+function selectProject(index){
+  const projects=getVisibleProjects();
+  if(!projects.length||index===activeProject) return;
+  const forward=(index-activeProject+projects.length)%projects.length;
+  projectStage.dataset.swapDirection=forward<=projects.length/2?'next':'prev';
+  activeProject=index;
+  renderProjects();
+}
+projectStage.addEventListener('animationend',e=>{
+  if(e.target.matches('.project-slide.is-active')) delete projectStage.dataset.swapDirection;
+});
+projectDots.addEventListener('click',e=>{
+  const dot=e.target.closest('.project-dot'); if(!dot) return;
+  selectProject(Number(dot.dataset.index));
+});
+projectStage.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'){e.preventDefault();moveProject(-1);}
+  if(e.key==='ArrowRight'){e.preventDefault();moveProject(1);}
+});
+let pointerStart = null;
+let draggedProject = false;
+projectStage.addEventListener('pointerdown',e=>{
+  if(!e.isPrimary||e.button!==0||e.target.closest('a,button')) return;
+  pointerStart={id:e.pointerId,x:e.clientX,y:e.clientY};
+  draggedProject=false;
+  projectStage.setPointerCapture(e.pointerId);
+});
+projectStage.addEventListener('pointermove',e=>{
+  if(!pointerStart||e.pointerId!==pointerStart.id) return;
+  const dx=e.clientX-pointerStart.x;
+  const dy=e.clientY-pointerStart.y;
+  if(Math.abs(dx)>8&&Math.abs(dx)>Math.abs(dy)) {
+    draggedProject=true;
+    projectStage.classList.add('is-dragging');
+  }
+});
+function clearProjectSwipe(e){
+  if(!pointerStart||e.pointerId!==pointerStart.id) return;
+  if(projectStage.hasPointerCapture(e.pointerId)) projectStage.releasePointerCapture(e.pointerId);
+  pointerStart=null;
+  projectStage.classList.remove('is-dragging');
+}
+function endProjectSwipe(e){
+  if(!pointerStart||e.pointerId!==pointerStart.id) return;
+  const dx=e.clientX-pointerStart.x;
+  const dy=e.clientY-pointerStart.y;
+  if(draggedProject&&Math.abs(dx)>=48&&Math.abs(dx)>Math.abs(dy)) {
+    moveProject(dx<0?1:-1);
+  }
+  clearProjectSwipe(e);
+}
+projectStage.addEventListener('pointerup',endProjectSwipe);
+projectStage.addEventListener('pointercancel',e=>{
+  clearProjectSwipe(e);
+  draggedProject=false;
+});
+projectStage.addEventListener('click',e=>{
+  if(!draggedProject) return;
+  e.preventDefault();
+  e.stopPropagation();
+  draggedProject=false;
+},true);
+
+let horizontalWheel=0;
+let wheelLocked=false;
+let wheelResetTimer;
+projectStage.addEventListener('wheel',e=>{
+  if(Math.abs(e.deltaX)<=Math.abs(e.deltaY)) return;
+  e.preventDefault();
+  clearTimeout(wheelResetTimer);
+  if(wheelLocked) {
+    wheelResetTimer=setTimeout(()=>{wheelLocked=false;},450);
+    return;
+  }
+  horizontalWheel+=e.deltaX;
+  if(Math.abs(horizontalWheel)<55) {
+    wheelResetTimer=setTimeout(()=>{horizontalWheel=0;},450);
+    return;
+  }
+  moveProject(horizontalWheel>0?1:-1);
+  horizontalWheel=0;
+  wheelLocked=true;
+  wheelResetTimer=setTimeout(()=>{wheelLocked=false;},450);
+},{passive:false});
+addEventListener('resize',renderProjects,{passive:true});
 
 function buildFilter(mountSel, targetSel, cats, attr){
   const mount = $(mountSel);
   mount.dataset.current = 'All';
-  mount.innerHTML = ['All'].concat(cats).map((c,i)=>
-    `<button class="chip" data-v="${esc(c)}" aria-pressed="${i===0}">${esc(c)}</button>`).join('');
-  mount.addEventListener('click', e => {
-    const chip = e.target.closest('.chip'); if(!chip) return;
-    const v = chip.dataset.v;
-    mount.dataset.current = v;
-    $$(mountSel+' .chip').forEach(c=>c.setAttribute('aria-pressed', String(c.dataset.v===v)));
-    $$(targetSel).forEach(el=>{ el.hidden = !(v==='All' || el.dataset[attr]===v); });
+  mount.innerHTML = ['All'].concat(cats).map((category,index)=>
+    `<button class="chip" data-v="${esc(category)}" aria-pressed="${index===0}">${esc(category)}</button>`).join('');
+  mount.addEventListener('click',e=>{
+    const chip=e.target.closest('.chip'); if(!chip) return;
+    const value=chip.dataset.v;
+    mount.dataset.current=value;
+    $$(mountSel+' .chip').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.v===value)));
+    $$(targetSel).forEach(item=>{item.hidden=!(value==='All'||item.dataset[attr]===value);});
   });
 }
-/* re-applies whichever filter chip is currently selected — used after a
-   re-render (e.g. after an image upload) rebuilds the target elements */
-function reapplyFilter(mountSel, targetSel, attr){
-  const v = $(mountSel).dataset.current || 'All';
-  $$(targetSel).forEach(el=>{ el.hidden = !(v==='All' || el.dataset[attr]===v); });
-}
-buildFilter('#projFilters','#projectGrid .card',['Web','UI/UX','Backend','Data','Academic'],'cat');
-wireImageUploads('#projectGrid', () => { renderProjects(); reapplyFilter('#projFilters','#projectGrid .card','cat'); });
 
 $('#stackGroups').innerHTML = DATA.stack.map(g=>`<div class="glass sg"><h4>${esc(g.group)}</h4>
   ${g.items.map(t=>`<div class="tech" tabindex="0"><span class="dot" aria-hidden="true"></span>
@@ -161,7 +202,7 @@ $('#logs').innerHTML = DATA.logs.map(l=>{
   <div><dt>What's next</dt><dd>${esc(l.next)}</dd></div></dl>
   <div class="stack">${l.tech.map(t=>`<span>${esc(t)}</span>`).join('')}</div></article>`;
 }).join('');
-buildFilter('#logFilters','#logs .log',['Frontend','Backend','Database','DevOps','UI/UX','Programming'],'cat');
+buildFilter('#logFilters','#logs .log',['Frontend','Backend','Database','DevOps','UI/UX','Programming','Project Management','Data','Mathematics'],'cat');
 
 const noteCats = Array.from(new Set(DATA.notes.map(n=>n.cat)));
 $('#notes').innerHTML = DATA.notes.map(n=>`
@@ -190,20 +231,6 @@ $('#gardenFilters').addEventListener('click', e=>{
   filterGarden();
 });
 $('#gardenSearch').addEventListener('input', filterGarden);
-
-function renderCerts(){
-  $('#certs').innerHTML = DATA.certs.map(c=>{
-    const slot = uploadSlot('cert:'+slug(c.name), c.image, c.name, 'Add certificate image');
-    return `<article class="glass cert" data-cat="${esc(c.cat)}">
-  <div class="cert-img"${slot.attr}>${slot.html}</div>
-  <div class="cert-body"><h4>${esc(c.name)}</h4><div class="org">${esc(c.org)} · ${esc(c.date)}</div>
-  <div class="stack">${c.skills.map(s=>`<span>${esc(s)}</span>`).join('')}</div>
-  ${real(c.link)?`<a class="mini" href="${esc(c.link)}" target="_blank" rel="noopener">View Certificate ${arrow}</a>`:''}</div></article>`;
-  }).join('');
-}
-renderCerts();
-buildFilter('#certFilters','#certs .cert',['Certificates','Awards','Competitions','Academic'],'cat');
-wireImageUploads('#certs', () => { renderCerts(); reapplyFilter('#certFilters','#certs .cert','cat'); });
 
 const roadLabel = {done:'Completed',now:'In progress',next:'Ahead'};
 $('#road').innerHTML = DATA.road.map(r=>
@@ -249,7 +276,7 @@ drawer.addEventListener('click', e=>{
 });
 
 /* highlight the section currently in view */
-const ids = ['top','about','projects','learning','skills','garden','certificates','contact'];
+const ids = ['top','about','projects','stack','learning','skills','garden','contact'];
 const io2 = new IntersectionObserver(entries=>{
   const vis = entries.filter(e=>e.isIntersecting);
   if(!vis.length) return;
@@ -274,8 +301,12 @@ $('#send').addEventListener('click', ()=>{
   const note=$('#formNote');
   if(!n||!m||!msg){ note.textContent='Please fill in all three fields.'; note.style.color='#E06C6C'; return; }
   if(!$('#cmail').checkValidity()){ note.textContent='That email address doesn\'t look right.'; note.style.color='#E06C6C'; return; }
-  note.textContent='Opening your mail app…'; note.style.color='var(--mint)';
-  location.href = `mailto:${C.email}?subject=${encodeURIComponent('Portfolio message from '+n)}&body=${encodeURIComponent(msg+'\n\n— '+n+' ('+m+')')}`;
+  if(!real(C.email)){ note.textContent='Email contact is not configured yet.'; note.style.color='#E06C6C'; return; }
+  note.textContent='Opening Gmail compose…'; note.style.color='var(--mint)';
+  const subject='Portfolio message from '+n;
+  const body=msg+'\n\n— '+n+'\nReply to: '+m;
+  const composeUrl=`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(C.email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.open(composeUrl,'_blank','noopener,noreferrer');
 });
 
 if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
@@ -285,6 +316,3 @@ if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
   },{threshold:.08, rootMargin:'0px 0px -40px 0px'});
   $$('.rv').forEach(el=>io.observe(el));
 }else{ $$('.rv').forEach(el=>el.classList.add('in')); }
-
-
-

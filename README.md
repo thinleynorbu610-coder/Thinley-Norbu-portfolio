@@ -9,28 +9,27 @@ myapp/
 │  ├─ data.js               ← Edit THIS to change any text or add images
 │  └─ main.js                Rendering + interactivity (no content to edit here)
 ├─ images/
-│  ├─ profile/               Your profile photo (crest.png)
+│  ├─ profile/               Your profile photo (bg.png)
 │  ├─ projects/               Project screenshots
-│  └─ certificates/            Certificate scans/exports
 └─ README.md                 This file
 ```
 
-## Adding images
+## Project images
 
-1. Drop the image file into the matching `images/…` folder.
-2. Open `js/data.js` and set the relevant entry's `image` field to the
-   path, e.g. `image:"images/projects/quickbite.png"`.
-3. Refresh the page — no other changes needed.
+Project cover images are bundled in `images/projects/` and assigned through
+each project's `image` field in `js/data.js`. Visitors cannot upload or
+replace project images from the page. See
+[images/projects/README.md](images/projects/README.md) for details.
 
-Your profile photo is the one exception: it's referenced directly in
-`index.html` at `images/profile/crest.png`. Replace that file (same name)
-to swap it, or edit the `src` on `#crestFull` in `index.html` to point
-elsewhere.
+The portrait in the hero and About section is referenced directly in
+`index.html` at `images/profile/bg.png`. Replace that file (same name) to
+swap it, or edit the image `src` values in `index.html` to point elsewhere.
+The small brand mark is `images/profile/logo.png`.
 
 ## Editing content
 
 Everything else — stats, timeline, projects, tech stack, skills, learning
-logs, garden notes, certificates, roadmap — lives in the `DATA` object in
+logs, garden notes, and roadmap — lives in the `DATA` object in
 `js/data.js`. Each section has a comment above it in that file.
 
 ## Running locally
