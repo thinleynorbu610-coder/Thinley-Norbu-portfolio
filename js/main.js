@@ -36,8 +36,6 @@ function renderProjects(){
     return;
   }
   activeProject = (activeProject + projects.length) % projects.length;
-  const offset = Math.min(projectStage.clientWidth * .39, 500);
-  projectStage.style.setProperty('--slide-offset', `${offset}px`);
   projectStage.innerHTML = projects.map((p,index) => {
     const projectTags = p.focus || p.tech;
     const links = [
@@ -48,18 +46,67 @@ function renderProjects(){
     const image = p.image
       ? `<img class="project-image" src="${esc(p.image)}" alt="${esc(p.title)} project preview" loading="lazy">`
       : '<div class="project-image-empty" aria-hidden="true"></div>';
-    const position = index===activeProject ? 'active' : index===(activeProject-1+projects.length)%projects.length ? 'prev' : index===(activeProject+1)%projects.length ? 'next' : 'hidden';
-    return `<article class="glass card project-slide is-${position}" data-position="${position}" aria-hidden="${position!=='active'}" ${position==='active'?'':'inert'}>
+    return `<article class="glass card project-slide" data-index="${index}">
     <div class="shot">${image}<span class="state ${esc(p.status)}">${esc(p.statusLabel)}</span></div>
     <div class="card-body"><h3>${esc(p.title)}</h3><p>${esc(p.desc)}</p>
     <div class="stack">${projectTags.map(t=>`<span>${esc(t)}</span>`).join('')}</div>
     ${links?`<div class="card-links">${links}</div>`:''}</div></article>`;
   }).join('');
   projectDots.innerHTML = projects.map((p,index)=>
-    `<button class="project-dot${index===activeProject?' is-active':''}" type="button" data-index="${index}" aria-label="Show project ${index+1}: ${esc(p.title)}" aria-pressed="${index===activeProject}"></button>`).join('');
-  projectCount.textContent = `${String(activeProject+1).padStart(2,'0')} / ${String(projects.length).padStart(2,'0')}`;
+    `<button class="project-dot" type="button" data-index="${index}" aria-label="Show project ${index+1}: ${esc(p.title)}"></button>`).join('');
+  /* first paint: place cards without animating them in from nowhere */
+  projectStage.classList.add('no-anim');
+  layoutProjects();
+  equalizeProjectHeights();
+  void projectStage.offsetWidth;
+  projectStage.classList.remove('no-anim');
+}
+
+/* positions the existing cards around the active one. Cards are never rebuilt
+   here, so CSS transitions glide each card from its old spot to its new one. */
+function layoutProjects(){
+  const slides = $$('#projectStage .project-slide');
+  const n = slides.length;
+  if (!n) return;
+  const offset = Math.min(projectStage.clientWidth * .39, 500);
+  projectStage.style.setProperty('--slide-offset', `${offset}px`);
+  slides.forEach((slide,index) => {
+    /* shortest signed distance around the loop: -1 = left, +1 = right */
+    let d = (index - activeProject + n) % n;
+    if (d > n/2) d -= n;
+    const position = d===0 ? 'active' : d===-1 ? 'prev' : d===1 ? 'next' : d<0 ? 'hidden-prev' : 'hidden-next';
+    slide.className = `glass card project-slide is-${position}`;
+    slide.setAttribute('aria-hidden', String(position!=='active'));
+    slide.inert = position!=='active';
+  });
+  $$('#projectDots .project-dot').forEach((dot,index) => {
+    dot.classList.toggle('is-active', index===activeProject);
+    dot.setAttribute('aria-pressed', String(index===activeProject));
+  });
+  projectCount.textContent = `${String(activeProject+1).padStart(2,'0')} / ${String(n).padStart(2,'0')}`;
+}
+
+/* desktop: every card gets the height of the tallest one so side cards line up.
+   phones: cards keep their natural height and the stage follows the active card,
+   so a short card isn't padded with empty space. */
+const phoneCarousel = matchMedia('(max-width:700px)');
+function equalizeProjectHeights(){
+  const slides = $$('#projectStage .project-slide');
+  slides.forEach(s => { s.style.height = ''; });
+  if (phoneCarousel.matches) {
+    const active = projectStage.querySelector('.project-slide.is-active');
+    if (active) projectStage.style.height = (active.offsetHeight + 56) + 'px';
+    return;
+  }
+  const tallest = Math.max(0, ...slides.map(s => s.offsetHeight));
+  if (!tallest) return;
+  slides.forEach(s => { s.style.height = tallest + 'px'; });
+  /* stage fits the cards with room for the active card's shadow */
+  projectStage.style.height = (tallest + 56) + 'px';
 }
 renderProjects();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(equalizeProjectHeights);
+addEventListener('load', equalizeProjectHeights);
 
 projectFilters.dataset.current = projectCategory;
 projectFilters.innerHTML = ['All','Web','UI/UX','Backend','Data','Academic'].map((category,index)=>
@@ -76,20 +123,16 @@ function moveProject(direction){
   const projects=getVisibleProjects();
   if(!projects.length) return;
   activeProject=(activeProject+direction+projects.length)%projects.length;
-  projectStage.dataset.swapDirection=direction>0?'next':'prev';
-  renderProjects();
+  layoutProjects();
+  if(phoneCarousel.matches) equalizeProjectHeights();
 }
 function selectProject(index){
   const projects=getVisibleProjects();
   if(!projects.length||index===activeProject) return;
-  const forward=(index-activeProject+projects.length)%projects.length;
-  projectStage.dataset.swapDirection=forward<=projects.length/2?'next':'prev';
   activeProject=index;
-  renderProjects();
+  layoutProjects();
+  if(phoneCarousel.matches) equalizeProjectHeights();
 }
-projectStage.addEventListener('animationend',e=>{
-  if(e.target.matches('.project-slide.is-active')) delete projectStage.dataset.swapDirection;
-});
 projectDots.addEventListener('click',e=>{
   const dot=e.target.closest('.project-dot'); if(!dot) return;
   selectProject(Number(dot.dataset.index));
@@ -98,72 +141,94 @@ projectStage.addEventListener('keydown',e=>{
   if(e.key==='ArrowLeft'){e.preventDefault();moveProject(-1);}
   if(e.key==='ArrowRight'){e.preventDefault();moveProject(1);}
 });
+/* drag / swipe with mouse, pen or finger. The cards follow the pointer while
+   dragging (via --drag-x) and glide to their new spot on release. */
 let pointerStart = null;
 let draggedProject = false;
+let suppressClick = false;
 projectStage.addEventListener('pointerdown',e=>{
+  suppressClick=false;              // a fresh press never inherits the last swipe
   if(!e.isPrimary||e.button!==0||e.target.closest('a,button')) return;
-  pointerStart={id:e.pointerId,x:e.clientX,y:e.clientY};
+  pointerStart={id:e.pointerId,x:e.clientX,y:e.clientY,t:performance.now()};
   draggedProject=false;
-  projectStage.setPointerCapture(e.pointerId);
+  try{ projectStage.setPointerCapture(e.pointerId); }catch(err){}
 });
 projectStage.addEventListener('pointermove',e=>{
   if(!pointerStart||e.pointerId!==pointerStart.id) return;
   const dx=e.clientX-pointerStart.x;
   const dy=e.clientY-pointerStart.y;
-  if(Math.abs(dx)>8&&Math.abs(dx)>Math.abs(dy)) {
+  if(!draggedProject&&Math.abs(dx)>8&&Math.abs(dx)>Math.abs(dy)) {
     draggedProject=true;
     projectStage.classList.add('is-dragging');
   }
+  if(draggedProject) projectStage.style.setProperty('--drag-x', `${dx*.85}px`);
 });
 function clearProjectSwipe(e){
   if(!pointerStart||e.pointerId!==pointerStart.id) return;
-  if(projectStage.hasPointerCapture(e.pointerId)) projectStage.releasePointerCapture(e.pointerId);
+  try{ if(projectStage.hasPointerCapture(e.pointerId)) projectStage.releasePointerCapture(e.pointerId); }catch(err){}
   pointerStart=null;
+  draggedProject=false;
   projectStage.classList.remove('is-dragging');
+  projectStage.style.removeProperty('--drag-x');
 }
 function endProjectSwipe(e){
   if(!pointerStart||e.pointerId!==pointerStart.id) return;
   const dx=e.clientX-pointerStart.x;
   const dy=e.clientY-pointerStart.y;
-  if(draggedProject&&Math.abs(dx)>=48&&Math.abs(dx)>Math.abs(dy)) {
+  const quick=performance.now()-pointerStart.t<300;
+  /* a long drag, or a short fast flick, both count */
+  if(draggedProject&&Math.abs(dx)>Math.abs(dy)&&(Math.abs(dx)>=48||(quick&&Math.abs(dx)>=24))) {
     moveProject(dx<0?1:-1);
   }
+  /* swallow only the click that the mouse fires right after this drag */
+  if(draggedProject){ suppressClick=true; setTimeout(()=>{suppressClick=false;},0); }
   clearProjectSwipe(e);
 }
 projectStage.addEventListener('pointerup',endProjectSwipe);
-projectStage.addEventListener('pointercancel',e=>{
-  clearProjectSwipe(e);
-  draggedProject=false;
-});
+projectStage.addEventListener('pointercancel',clearProjectSwipe);
+projectStage.addEventListener('lostpointercapture',clearProjectSwipe);
 projectStage.addEventListener('click',e=>{
-  if(!draggedProject) return;
+  if(!suppressClick) return;
   e.preventDefault();
   e.stopPropagation();
-  draggedProject=false;
+  suppressClick=false;
 },true);
+projectStage.addEventListener('dragstart',e=>e.preventDefault());
 
-let horizontalWheel=0;
-let wheelLocked=false;
-let wheelResetTimer;
+/* touchpad: one move per swipe gesture. A new gesture starts after a short
+   pause, when the deltas speed up again during the momentum tail, or when the
+   direction flips — so back-to-back swipes each register. */
+let wheelAcc=0, wheelArmed=true, wheelLastT=0, wheelLastAbs=0, wheelLastSign=0;
 projectStage.addEventListener('wheel',e=>{
   if(Math.abs(e.deltaX)<=Math.abs(e.deltaY)) return;
   e.preventDefault();
-  clearTimeout(wheelResetTimer);
-  if(wheelLocked) {
-    wheelResetTimer=setTimeout(()=>{wheelLocked=false;},450);
-    return;
+  const now=performance.now();
+  const abs=Math.abs(e.deltaX);
+  const sign=Math.sign(e.deltaX);
+  const newGesture = now-wheelLastT>140
+    || (sign!==wheelLastSign)
+    || (!wheelArmed && abs>8 && abs>wheelLastAbs*1.6);
+  if(newGesture){ wheelAcc=0; wheelArmed=true; }
+  wheelLastT=now; wheelLastAbs=abs; wheelLastSign=sign;
+  if(!wheelArmed) return;
+  wheelAcc+=e.deltaX;
+  if(Math.abs(wheelAcc)>=50){
+    moveProject(wheelAcc>0?1:-1);
+    wheelAcc=0;
+    wheelArmed=false;
   }
-  horizontalWheel+=e.deltaX;
-  if(Math.abs(horizontalWheel)<55) {
-    wheelResetTimer=setTimeout(()=>{horizontalWheel=0;},450);
-    return;
-  }
-  moveProject(horizontalWheel>0?1:-1);
-  horizontalWheel=0;
-  wheelLocked=true;
-  wheelResetTimer=setTimeout(()=>{wheelLocked=false;},450);
 },{passive:false});
-addEventListener('resize',renderProjects,{passive:true});
+let projectResizeTimer;
+addEventListener('resize',()=>{
+  clearTimeout(projectResizeTimer);
+  projectResizeTimer=setTimeout(()=>{
+    projectStage.classList.add('no-anim');
+    layoutProjects();
+    equalizeProjectHeights();
+    void projectStage.offsetWidth;
+    projectStage.classList.remove('no-anim');
+  },120);
+},{passive:true});
 
 function buildFilter(mountSel, targetSel, cats, attr){
   const mount = $(mountSel);
@@ -204,34 +269,6 @@ $('#logs').innerHTML = DATA.logs.map(l=>{
 }).join('');
 buildFilter('#logFilters','#logs .log',['Frontend','Backend','Database','DevOps','UI/UX','Programming','Project Management','Data','Mathematics'],'cat');
 
-const noteCats = Array.from(new Set(DATA.notes.map(n=>n.cat)));
-$('#notes').innerHTML = DATA.notes.map(n=>`
-  <article class="glass note" data-cat="${esc(n.cat)}" data-hay="${esc((n.title+' '+n.body+' '+n.tags.join(' ')+' '+n.cat).toLowerCase())}">
-  <h4>${n.fav?'<span class="star">★</span>':''}${esc(n.title)}</h4><p>${esc(n.body)}</p>
-  ${n.code?`<code>${esc(n.code)}</code>`:''}
-  <div class="tg">${n.tags.map(t=>`<span>#${esc(t)}</span>`).join('')}</div></article>`).join('')
-  + '<div class="empty" id="noEmpty" hidden>No notes match that search.</div>';
-
-let gardenCat = 'All';
-function filterGarden(){
-  const q = $('#gardenSearch').value.trim().toLowerCase();
-  let shown = 0;
-  $$('#notes .note').forEach(n=>{
-    const ok = (gardenCat==='All'||n.dataset.cat===gardenCat) && (!q||n.dataset.hay.indexOf(q)!==-1);
-    n.hidden = !ok; if(ok) shown++;
-  });
-  $('#noEmpty').hidden = shown>0;
-}
-$('#gardenFilters').innerHTML = ['All'].concat(noteCats).map((c,i)=>
-  `<button class="chip" data-v="${esc(c)}" aria-pressed="${i===0}">${esc(c)}</button>`).join('');
-$('#gardenFilters').addEventListener('click', e=>{
-  const chip = e.target.closest('.chip'); if(!chip) return;
-  gardenCat = chip.dataset.v;
-  $$('#gardenFilters .chip').forEach(c=>c.setAttribute('aria-pressed', String(c.dataset.v===gardenCat)));
-  filterGarden();
-});
-$('#gardenSearch').addEventListener('input', filterGarden);
-
 const roadLabel = {done:'Completed',now:'In progress',next:'Ahead'};
 $('#road').innerHTML = DATA.road.map(r=>
   `<div class="glass node ${esc(r.state)}"><span class="st">${roadLabel[r.state]}</span><div class="nm">${esc(r.name)}</div></div>`).join('');
@@ -247,11 +284,27 @@ if (real(C.email)) {
   $('#reachEmail').href = 'mailto:' + C.email;
   $('#reachEmail span').textContent = C.email;
 }
-setLink('reachGithub', C.github);   setLink('footGithub', C.github);
+/* github may be one URL or a list — each account gets its own contact row
+   and footer link, labelled with its username so they're easy to tell apart */
+const githubs = [].concat(C.github || []).filter(real);
+const ghName = url => url.replace(/\/+$/,'').split('/').pop();
+setLink('reachGithub', githubs[0]); setLink('footGithub', githubs[0]);
+if (githubs[0]) {
+  $('#reachGithub span').textContent = 'github.com/' + ghName(githubs[0]);
+  if (githubs.length > 1) $('#footGithub').textContent = 'GitHub @' + ghName(githubs[0]);
+}
+githubs.slice(1).reverse().forEach(url => {
+  const row = $('#reachGithub').cloneNode(true);
+  row.removeAttribute('id'); row.href = url;
+  row.querySelector('span').textContent = 'github.com/' + ghName(url);
+  $('#reachGithub').after(row);
+  const foot = $('#footGithub').cloneNode(true);
+  foot.removeAttribute('id'); foot.href = url;
+  foot.textContent = 'GitHub @' + ghName(url);
+  $('#footGithub').after(foot);
+});
 setLink('reachLinkedin', C.linkedin); setLink('footLinkedin', C.linkedin);
 setLink('footResume', C.resume);
-const ghUser = real(C.github) && C.github.replace(/\/+$/,'').split('/').pop();
-if (ghUser) $('#reachGithub span').textContent = 'github.com/' + ghUser;
 const liUser = real(C.linkedin) && C.linkedin.replace(/\/+$/,'').split('/').pop();
 if (liUser) $('#reachLinkedin span').textContent = 'linkedin.com/in/' + liUser;
 
@@ -276,7 +329,7 @@ drawer.addEventListener('click', e=>{
 });
 
 /* highlight the section currently in view */
-const ids = ['top','about','projects','stack','learning','skills','garden','contact'];
+const ids = ['top','about','projects','stack','learning','skills','contact'];
 const io2 = new IntersectionObserver(entries=>{
   const vis = entries.filter(e=>e.isIntersecting);
   if(!vis.length) return;
@@ -296,17 +349,47 @@ $('#theme').addEventListener('click', ()=>{
   try { localStorage.setItem('portfolioTheme', el.dataset.theme); } catch(e){}
 });
 
-$('#send').addEventListener('click', ()=>{
+/* contact form — sends straight to DATA.contact.email through FormSubmit
+   (formsubmit.co), so visitors never leave the page or need a mail app.
+   The very first message triggers a one-time "Activate" email from
+   FormSubmit to that inbox; after you click it, every message arrives. */
+const sendBtn = $('#send');
+function setNote(text, color, html){
+  const note = $('#formNote');
+  if (html) note.innerHTML = html; else note.textContent = text;
+  note.style.color = color;
+}
+sendBtn.addEventListener('click', async ()=>{
   const n=$('#cname').value.trim(), m=$('#cmail').value.trim(), msg=$('#cmsg').value.trim();
-  const note=$('#formNote');
-  if(!n||!m||!msg){ note.textContent='Please fill in all three fields.'; note.style.color='#E06C6C'; return; }
-  if(!$('#cmail').checkValidity()){ note.textContent='That email address doesn\'t look right.'; note.style.color='#E06C6C'; return; }
-  if(!real(C.email)){ note.textContent='Email contact is not configured yet.'; note.style.color='#E06C6C'; return; }
-  note.textContent='Opening Gmail compose…'; note.style.color='var(--mint)';
-  const subject='Portfolio message from '+n;
-  const body=msg+'\n\n— '+n+'\nReply to: '+m;
-  const composeUrl=`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(C.email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  window.open(composeUrl,'_blank','noopener,noreferrer');
+  if(!n||!m||!msg){ setNote('Please fill in all three fields.','#E06C6C'); return; }
+  if(!$('#cmail').checkValidity()){ setNote('That email address doesn\'t look right.','#E06C6C'); return; }
+  if(!real(C.email)){ setNote('Email contact is not configured yet.','#E06C6C'); return; }
+  const endpoint = C.formEndpoint || `https://formsubmit.co/ajax/${C.email.trim()}`;
+  const subject = 'Portfolio message from ' + n;
+
+  sendBtn.disabled = true;
+  setNote('Sending…','var(--fg-2)');
+  try {
+    const res = await fetch(endpoint, {
+      method:'POST',
+      headers:{'Content-Type':'application/json', Accept:'application/json'},
+      body:JSON.stringify({
+        name:n, email:m, message:msg,      // "email" becomes the Reply-To in your inbox
+        _subject:subject, _template:'table', _captcha:'false', _honey:$('#chp').value
+      })
+    });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok || String(data.success) !== 'true') throw new Error(data.message || 'Send failed');
+    $('#cname').value = ''; $('#cmail').value = ''; $('#cmsg').value = '';
+    setNote(`Thanks ${n} — your message was sent. I’ll reply to ${m}.`,'var(--mint)');
+  } catch (err) {
+    /* never lose a message: offer a direct email link with everything pre-filled */
+    const body = msg + '\n\n— ' + n + '\nReply to: ' + m;
+    const mailto = `mailto:${C.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    setNote('', '#E06C6C', `Couldn’t send right now. <a href="${esc(mailto)}" style="color:inherit">Email me directly</a> instead.`);
+  } finally {
+    sendBtn.disabled = false;
+  }
 });
 
 if(!matchMedia('(prefers-reduced-motion: reduce)').matches){

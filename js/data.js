@@ -17,12 +17,15 @@ const DATA = {
   /* contact details — used by the contact section, footer and form */
   contact: {
     email:"nthinley817@gmail.com",
-    github:"https://github.com/nthinley817-sys",
+    github:[        // one link per account; add or remove freely
+      "https://github.com/nthinley817-sys",
+      "https://github.com/thinleynorbu610-coder"
+    ],
     linkedin:null,  // e.g. "https://www.linkedin.com/in/your-profile"
     resume:null     // e.g. "files/resume.pdf"
   },
   stats: [
-    {n:"10",l:"Featured Projects"},{n:"15+",l:"Technologies Learned"},
+    {n:"11",l:"Featured Projects"},{n:"15+",l:"Technologies Learned"},
     {n:"4",l:"Near-launch Services"},{n:"4",l:"Learning Areas"}
   ],
   timeline: [
@@ -32,6 +35,9 @@ const DATA = {
     {year:"Future",title:"Professional software developer",desc:"Shipping products people rely on.",done:false}
   ],
   projects: [
+    {title:"Nexora",category:"Web",status:"wip",statusLabel:"Team project",
+     desc:"A technology team website where our team leader and members collaborate to design and build secure, scalable and intelligent digital solutions for real-world problems.",
+     focus:["Team collaboration","Real-world solutions"],image:"images/projects/nexora-hero.png",github:null,demo:"#contact",demoLabel:"Request Live Preview",details:null},
     {title:"BhutanCare",category:"Web",status:"wip",statusLabel:"In progress",
      desc:"A digital healthcare platform improving hospital appointment booking and patient access to health services.",
      tech:["HTML","CSS","JavaScript","Go","PostgreSQL","Docker"],image:"images/projects/bhutancare-homepage.png",github:"#",demo:"#",details:"#"},
@@ -132,32 +138,6 @@ const DATA = {
      learned:"Strengthening mathematical foundations that support programming and analytical problem-solving.",
      applied:"Practising problem-solving concepts alongside programming.",
      next:"Keep building confidence with logic and discrete mathematics.",tech:["Logic","Problem solving"]}
-  ],
-  notes: [
-    {title:"Undo the last commit, keep the changes",cat:"Git",fav:true,
-     body:"Rewinds the last commit but leaves your files alone. The one I actually use.",
-     code:"git reset --soft HEAD~1",tags:["git","commands"]},
-    {title:"The N+1 query problem",cat:"Database",fav:true,
-     body:"Looping over rows and querying inside the loop turns 1 query into 101. Use a join or a single WHERE IN.",
-     code:null,tags:["postgres","performance"]},
-    {title:"Centre anything with Grid",cat:"CSS",fav:false,
-     body:"Two lines. Works regardless of the child size.",
-     code:"display: grid;\nplace-items: center;",tags:["css","layout"]},
-    {title:"Go error handling habit",cat:"Go",fav:false,
-     body:"Wrap errors with context as they travel up, so the log tells you where it actually broke.",
-     code:'if err != nil {\n  return fmt.Errorf("fetch user: %w", err)\n}',tags:["go","errors"]},
-    {title:"Mistake: I stored passwords as plain text",cat:"Lessons",fav:true,
-     body:"In my first login form. Hash with bcrypt, always, and never invent your own auth scheme.",
-     code:null,tags:["security","mistakes"]},
-    {title:"Kill the process on a busy port",cat:"Terminal",fav:false,
-     body:"When the server says the port is already in use.",
-     code:"lsof -ti:3000 | xargs kill -9",tags:["terminal","commands"]},
-    {title:"Idea: offline-first for weak connections",cat:"Ideas",fav:false,
-     body:"Campus wifi drops constantly. A service worker plus a local cache would make most of my apps usable anyway.",
-     code:null,tags:["ideas","pwa"]},
-    {title:"Semantic HTML is free accessibility",cat:"CSS",fav:false,
-     body:"A button element gets keyboard support, focus and screen reader roles for nothing. A styled div gets none of it.",
-     code:null,tags:["html","a11y"]}
   ],
   road: [
     {name:"Programming Foundations",state:"done"},{name:"HTML & CSS",state:"done"},
