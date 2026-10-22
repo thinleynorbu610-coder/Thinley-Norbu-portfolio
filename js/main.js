@@ -10,12 +10,14 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
 const real = u => !!u && u !== '#';
 const arrow = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H8M17 7v9"/></svg>';
 
-$('#stats').innerHTML = DATA.stats.map(s =>
+if ($('#stats')) $('#stats').innerHTML = DATA.stats.map(s =>
   `<div class="glass stat"><div class="n">${esc(s.n)}</div><div class="l">${esc(s.l)}</div></div>`).join('');
 
-$('#timeline').innerHTML = DATA.timeline.map(t =>
+if ($('#timeline')) $('#timeline').innerHTML = DATA.timeline.map(t =>
   `<li class="${t.done?'done':''}"><div class="y">${esc(t.year)}</div><div class="t">${esc(t.title)}</div><div class="d">${esc(t.desc)}</div></li>`).join('');
 
+/* ══════════════ PROJECTS (projects page only) ══════════════ */
+if ($('#projectStage')) {
 let projectCategory = 'All';
 let activeProject = 0;
 const projectStage = $('#projectStage');
@@ -40,8 +42,8 @@ function renderProjects(){
     const projectTags = p.focus || p.tech;
     const links = [
       real(p.github)?`<a class="mini" href="${esc(p.github)}" target="_blank" rel="noopener">GitHub ${arrow}</a>`:'',
-      real(p.demo)?`<a class="mini" href="${esc(p.demo)}" ${p.demo.startsWith('#')?'':'target="_blank" rel="noopener"'}>${esc(p.demoLabel || 'Live Demo')} ${arrow}</a>`:'',
-      real(p.details)?`<a class="mini" href="${esc(p.details)}" target="_blank" rel="noopener">Details ${arrow}</a>`:''
+      real(p.demo)?`<a class="mini" href="${esc(p.demo)}" ${/^https?:\/\//.test(p.demo)?'target="_blank" rel="noopener"':''}>${esc(p.demoLabel || 'Live Demo')} ${arrow}</a>`:'',
+      real(p.details)?`<a class="mini" href="${esc(p.details)}" ${/^https?:\/\//.test(p.details)?'target="_blank" rel="noopener"':''}>${esc(p.detailsLabel || 'Details')} ${arrow}</a>`:''
     ].join('');
     const image = p.image
       ? `<img class="project-image" src="${esc(p.image)}" alt="${esc(p.title)} project preview" loading="lazy">`
@@ -229,6 +231,7 @@ addEventListener('resize',()=>{
     projectStage.classList.remove('no-anim');
   },120);
 },{passive:true});
+} /* end projects */
 
 function buildFilter(mountSel, targetSel, cats, attr){
   const mount = $(mountSel);
@@ -244,18 +247,19 @@ function buildFilter(mountSel, targetSel, cats, attr){
   });
 }
 
-$('#stackGroups').innerHTML = DATA.stack.map(g=>`<div class="glass sg"><h4>${esc(g.group)}</h4>
+if ($('#stackGroups')) $('#stackGroups').innerHTML = DATA.stack.map(g=>`<div class="glass sg"><h4>${esc(g.group)}</h4>
   ${g.items.map(t=>`<div class="tech" tabindex="0"><span class="dot" aria-hidden="true"></span>
   <span>${esc(t.name)}</span><span class="lv">${esc(t.level)}</span>
   <div class="pop"><b>${esc(t.used)}</b>${esc(t.note)}</div></div>`).join('')}</div>`).join('');
 
-$('#skillGrid').innerHTML = DATA.skills.map(s=>{
+if ($('#skillGrid')) $('#skillGrid').innerHTML = DATA.skills.map(s=>{
   const f = Math.round(s.pct/10);
   return `<div class="glass skill"><div class="skill-top"><span>${esc(s.name)}</span><span class="pc">${s.pct}%</span></div>
   <div class="meter" role="img" aria-label="${esc(s.name)}: ${s.pct} percent">
   ${Array.from({length:10},(_,i)=>`<i class="${i<f?'on':''}"></i>`).join('')}</div></div>`;
 }).join('');
 
+if ($('#logs')) {
 $('#logs').innerHTML = DATA.logs.map(l=>{
   const d = Array.from({length:5},(_,i)=>`<i class="${i<l.difficulty?'on':''}"></i>`).join('');
   return `<article class="glass log" data-cat="${esc(l.category)}">
@@ -268,10 +272,44 @@ $('#logs').innerHTML = DATA.logs.map(l=>{
   <div class="stack">${l.tech.map(t=>`<span>${esc(t)}</span>`).join('')}</div></article>`;
 }).join('');
 buildFilter('#logFilters','#logs .log',['Frontend','Backend','Database','DevOps','UI/UX','Programming','Project Management','Data','Mathematics'],'cat');
+}
 
 const roadLabel = {done:'Completed',now:'In progress',next:'Ahead'};
-$('#road').innerHTML = DATA.road.map(r=>
+if ($('#road')) $('#road').innerHTML = DATA.road.map(r=>
   `<div class="glass node ${esc(r.state)}"><span class="st">${roadLabel[r.state]}</span><div class="nm">${esc(r.name)}</div></div>`).join('');
+
+/* ══════════════ TEAM (team page only) ══════════════ */
+const T = DATA.team;
+const personIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20.2c1.2-3.6 4.1-5.6 7.5-5.6s6.3 2 7.5 5.6"/></svg>';
+if (T && $('#teamMembers')) {
+  $('#teamMembers').innerHTML = T.members.map(m => `
+  <article class="glass member${m.lead?' is-lead':''}${m.me?' is-me':''}">
+    <div class="member-avatar">${m.photo
+      ? `<img src="${esc(m.photo)}" alt="${esc(m.name)}" loading="lazy">`
+      : personIcon}</div>
+    <div class="member-badges">${m.lead?'<span class="mb lead">Team lead</span>':''}${m.me?'<span class="mb me">That\'s me</span>':''}</div>
+    <h3>${esc(m.name)}</h3>
+    <p class="member-role">${esc(m.role)}</p>
+    <p class="member-tag">${esc(m.tagline)}</p>
+    <div class="stack">${m.skills.map(s=>`<span>${esc(s)}</span>`).join('')}</div>
+  </article>`).join('');
+}
+if (T && $('#teamWork')) {
+  $('#teamWork').innerHTML = T.work.map(w => `
+  <article class="glass tw">
+    <div class="tw-head"><h3>${esc(w.title)}</h3><span class="tw-status">${esc(w.status)}</span></div>
+    <dl>
+      <div><dt>The problem</dt><dd>${esc(w.problem)}</dd></div>
+      <div><dt>What we're building</dt><dd>${esc(w.solution)}</dd></div>
+    </dl>
+    <div class="stack">${w.tech.map(t=>`<span>${esc(t)}</span>`).join('')}</div>
+  </article>`).join('');
+}
+if (T && $('#teamServices')) {
+  $('#teamServices').innerHTML = T.services.map((s,i) => `
+  <div class="glass svc"><span class="svc-n">${String(i+1).padStart(2,'0')}</span><h4>${esc(s.title)}</h4><p>${esc(s.desc)}</p></div>`).join('');
+}
+if (T && $('#teamSite') && real(T.site)) { $('#teamSite').href = T.site; $('#teamSite').hidden = false; }
 
 /* contact links — filled from DATA.contact; unset ones stay hidden */
 const C = DATA.contact || {};
@@ -280,33 +318,49 @@ function setLink(id, url){
   if (!a) return;
   if (real(url)) { a.href = url; a.hidden = false; } else { a.hidden = true; }
 }
-if (real(C.email)) {
-  $('#reachEmail').href = 'mailto:' + C.email;
-  $('#reachEmail span').textContent = C.email;
+/* the footer is on every page; the contact rows only on the contact page */
+const reachEmail = $('#reachEmail'), reachGithub = $('#reachGithub'), reachLinkedin = $('#reachLinkedin');
+if (real(C.email) && reachEmail) {
+  reachEmail.href = 'mailto:' + C.email;
+  reachEmail.querySelector('span').textContent = C.email;
 }
 /* github may be one URL or a list — each account gets its own contact row
    and footer link, labelled with its username so they're easy to tell apart */
 const githubs = [].concat(C.github || []).filter(real);
 const ghName = url => url.replace(/\/+$/,'').split('/').pop();
+/* footer social links are icons: name them with a tooltip + screen-reader label */
+function labelIcon(a, label){ a.title = label; a.setAttribute('aria-label', label); }
+const footGithub = $('#footGithub');
 setLink('reachGithub', githubs[0]); setLink('footGithub', githubs[0]);
 if (githubs[0]) {
-  $('#reachGithub span').textContent = 'github.com/' + ghName(githubs[0]);
-  if (githubs.length > 1) $('#footGithub').textContent = 'GitHub @' + ghName(githubs[0]);
+  if (reachGithub) reachGithub.querySelector('span').textContent = 'github.com/' + ghName(githubs[0]);
+  if (footGithub) labelIcon(footGithub, 'GitHub @' + ghName(githubs[0]));
 }
 githubs.slice(1).reverse().forEach(url => {
-  const row = $('#reachGithub').cloneNode(true);
-  row.removeAttribute('id'); row.href = url;
-  row.querySelector('span').textContent = 'github.com/' + ghName(url);
-  $('#reachGithub').after(row);
-  const foot = $('#footGithub').cloneNode(true);
-  foot.removeAttribute('id'); foot.href = url;
-  foot.textContent = 'GitHub @' + ghName(url);
-  $('#footGithub').after(foot);
+  if (reachGithub) {
+    const row = reachGithub.cloneNode(true);
+    row.removeAttribute('id'); row.href = url;
+    row.querySelector('span').textContent = 'github.com/' + ghName(url);
+    reachGithub.after(row);
+  }
+  if (footGithub) {
+    const foot = footGithub.cloneNode(true);
+    foot.removeAttribute('id'); foot.href = url;
+    labelIcon(foot, 'GitHub @' + ghName(url));
+    footGithub.after(foot);
+  }
 });
 setLink('reachLinkedin', C.linkedin); setLink('footLinkedin', C.linkedin);
 setLink('footResume', C.resume);
 const liUser = real(C.linkedin) && C.linkedin.replace(/\/+$/,'').split('/').pop();
-if (liUser) $('#reachLinkedin span').textContent = 'linkedin.com/in/' + liUser;
+if (liUser && reachLinkedin) reachLinkedin.querySelector('span').textContent = 'linkedin.com/in/' + liUser;
+if (liUser && $('#footLinkedin')) labelIcon($('#footLinkedin'), 'LinkedIn: ' + liUser);
+/* footer email (icon + written address) and the current year */
+if (real(C.email)) {
+  if ($('#footEmail')) { $('#footEmail').href = 'mailto:' + C.email; labelIcon($('#footEmail'), 'Email ' + C.email); }
+  if ($('#footEmailText')) { $('#footEmailText').href = 'mailto:' + C.email; $('#footEmailText span').textContent = C.email; }
+}
+if ($('#footYear')) $('#footYear').textContent = new Date().getFullYear();
 
 /* ══════════════ BEHAVIOUR ══════════════ */
 const nav = $('#nav'), links = $('#navLinks'), burger = $('#burger'),
@@ -328,18 +382,14 @@ drawer.addEventListener('click', e=>{
   if(e.target.tagName==='A'){ drawer.classList.remove('open'); burger.setAttribute('aria-expanded','false'); }
 });
 
-/* highlight the section currently in view */
-const ids = ['top','about','projects','stack','learning','skills','contact'];
-const io2 = new IntersectionObserver(entries=>{
-  const vis = entries.filter(e=>e.isIntersecting);
-  if(!vis.length) return;
-  const id = '#'+vis[0].target.id;
-  $$('.nav-links a, .drawer a').forEach(a=>{
-    if(a.getAttribute('href')===id) a.setAttribute('aria-current','true');
-    else a.removeAttribute('aria-current');
-  });
-}, {rootMargin:'-20% 0px -70% 0px'});
-ids.map(i=>document.getElementById(i)).filter(Boolean).forEach(s=>io2.observe(s));
+/* highlight the page we're on. Works for /about.html and for hosts that
+   serve it as /about; the home page is / or /index.html. */
+const here = (location.pathname.split('/').pop() || 'index.html').replace(/\.html$/,'') || 'index';
+$$('.nav-links a, .drawer a').forEach(a=>{
+  const target = a.getAttribute('href').replace(/\.html$/,'');
+  if (target === here) a.setAttribute('aria-current','page');
+  else a.removeAttribute('aria-current');
+});
 
 /* theme — remembered per browser; storage failures just mean it isn't remembered */
 try { const t = localStorage.getItem('portfolioTheme'); if (t==='light'||t==='dark') document.documentElement.dataset.theme = t; } catch(e){}
@@ -359,7 +409,7 @@ function setNote(text, color, html){
   if (html) note.innerHTML = html; else note.textContent = text;
   note.style.color = color;
 }
-sendBtn.addEventListener('click', async ()=>{
+if (sendBtn) sendBtn.addEventListener('click', async ()=>{
   const n=$('#cname').value.trim(), m=$('#cmail').value.trim(), msg=$('#cmsg').value.trim();
   if(!n||!m||!msg){ setNote('Please fill in all three fields.','#E06C6C'); return; }
   if(!$('#cmail').checkValidity()){ setNote('That email address doesn\'t look right.','#E06C6C'); return; }

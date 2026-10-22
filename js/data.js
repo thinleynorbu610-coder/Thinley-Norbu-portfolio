@@ -21,7 +21,7 @@ const DATA = {
       "https://github.com/nthinley817-sys",
       "https://github.com/thinleynorbu610-coder"
     ],
-    linkedin:null,  // e.g. "https://www.linkedin.com/in/your-profile"
+    linkedin:"https://www.linkedin.com/in/thinley-norbu-610372431",
     resume:null     // e.g. "files/resume.pdf"
   },
   stats: [
@@ -37,7 +37,7 @@ const DATA = {
   projects: [
     {title:"Nexora",category:"Web",status:"wip",statusLabel:"Team project",
      desc:"A technology team website where our team leader and members collaborate to design and build secure, scalable and intelligent digital solutions for real-world problems.",
-     focus:["Team collaboration","Real-world solutions"],image:"images/projects/nexora-hero.png",github:null,demo:"#contact",demoLabel:"Request Live Preview",details:null},
+     focus:["Team collaboration","Real-world solutions"],image:"images/projects/nexora-hero.png",github:"https://github.com/thinleynorbu610-coder/Nexero",demo:"https://nexero.onrender.com",demoLabel:"View Live Preview",details:"team.html",detailsLabel:"Meet the Team"},
     {title:"BhutanCare",category:"Web",status:"wip",statusLabel:"In progress",
      desc:"A digital healthcare platform improving hospital appointment booking and patient access to health services.",
      tech:["HTML","CSS","JavaScript","Go","PostgreSQL","Docker"],image:"images/projects/bhutancare-homepage.png",github:"#",demo:"#",details:"#"},
@@ -58,7 +58,7 @@ const DATA = {
      tech:["PostgreSQL","SQL"],image:"images/projects/database-systems.png",github:"#",demo:null,details:"#"},
     {title:"Kyabje Buli Trulku Rinpoche",category:"Web",status:"wip",statusLabel:"Near launch",
      desc:"A bilingual digital storytelling experience documenting Kyabje Buli Trulku Rinpoche's life and spiritual lineage. Contact me to request a preview and confirm the project details.",
-     focus:["Digital heritage","Bilingual storytelling"],image:"images/projects/buli-trulku-hero.png",github:null,demo:"#contact",demoLabel:"Request Live Preview",details:null},
+     focus:["Digital heritage","Bilingual storytelling"],image:"images/projects/buli-trulku-hero.png",github:null,demo:"contact.html",demoLabel:"Request Live Preview",details:null},
     {title:"DrukHaus",category:"Web",status:"wip",statusLabel:"Near launch",
      desc:"A Bhutanese-inspired house design catalog featuring duplex concepts and custom architectural design inquiries. Broader service rollout depends on securing sufficient funding.",
      focus:["Design catalog","Custom inquiries"],image:"images/projects/drukhaus-duplex.jpg",github:null,demo:"https://drukhaus.onrender.com",demoLabel:"View Live Preview",details:null},
@@ -145,5 +145,59 @@ const DATA = {
     {name:"Backend Development",state:"now"},{name:"Databases",state:"now"},
     {name:"Full-Stack Development",state:"next"},{name:"DevOps",state:"next"},
     {name:"Professional Developer",state:"next"}
-  ]
+  ],
+
+  /* ── Nexora team page (team.html) ─────────────────────────────
+     photo: null shows a profile icon. To add a real photo, drop it in
+     images/team/ and set photo:"images/team/your-name.jpg".
+     me:true marks your own card. */
+  team: {
+    name:"Nexora",
+    site:"https://nexero.onrender.com",
+    members: [
+      {name:"Tshewang Dorji",role:"Team Leader",lead:true,photo:null,
+       tagline:"Keeps the team aligned while building intelligent, real-world systems.",
+       skills:["Full-Stack Development","AI & ML Prototyping","System Architecture","Team Leadership"]},
+      {name:"Thinley Norbu",role:"Full-Stack Developer",me:true,photo:null,
+       tagline:"Builds full web platforms for Bhutan, from wireframe to database.",
+       skills:["UI/UX Design","Full-Stack Development","Wireframing & Prototyping","Responsive Web Design"]},
+      {name:"Jamyang Lodey",role:"Backend Developer",photo:null,
+       tagline:"Turns complex requirements into dependable backend systems.",
+       skills:["Backend Development","Database Design","System Architecture","Agile Development"]},
+      {name:"Tshering Tandin Tobden",role:"Backend Developer",photo:null,
+       tagline:"Builds the APIs and data layers Nexora’s products run on.",
+       skills:["Backend Development","API Design","Database Design","Server-Side Logic"]},
+      {name:"Yeshi Ngedup",role:"Cybersecurity Specialist",photo:null,
+       tagline:"Makes sure what Nexora builds is safe to rely on.",
+       skills:["Security Assessment","Network Security","Secure Development","Security Best Practices"]}
+    ],
+    work: [
+      {title:"Project LHAKGAY",status:"In development",
+       problem:"Only 45% of early-grade students in Bhutan meet reading proficiency benchmarks, with a large urban–rural gap made worse by unreliable rural internet.",
+       solution:"An AI recommendation engine with an offline-first design, local caching, offline audio narration and a reward system that keeps young readers engaged.",
+       tech:["Python","AI/ML","Offline-first"]},
+      {title:"Project RIGPEL",status:"In development",
+       problem:"Most Bhutanese firms have no links to training providers, so young people's skills don't connect to real jobs and many leave the country.",
+       solution:"A secure Skill Passport and matching engine that connects skills to opportunities, with contracts aligned to the Labour and Employment Act 2007.",
+       tech:["PostgreSQL","React","Node.js"]},
+      {title:"SmartStudy (Studify)",status:"In development",
+       problem:"College students lack a structured way to plan study time and stay consistent, relying on scattered notes and reminders.",
+       solution:"A gamified study-planning and task platform that rewards consistency and helps students follow through.",
+       tech:["Node.js","PostgreSQL","JavaScript"]},
+      {title:"BhutanCare",status:"In development",
+       problem:"Hospital services relied on manual booking, records and queues, making care harder to reach and coordinate.",
+       solution:"One platform for online appointments, patient profiles, doctor and admin management, lab results and digital queues.",
+       tech:["React","Node.js","PostgreSQL"]}
+    ],
+    services: [
+      {title:"Web Development",desc:"Fast, responsive websites and web apps with clean, maintainable code."},
+      {title:"Backend Development",desc:"Reliable server-side systems that stay stable under real use."},
+      {title:"API Development",desc:"Secure, well-documented APIs that let systems talk cleanly."},
+      {title:"Database Solutions",desc:"Data models and optimisation that stay fast as products grow."},
+      {title:"Cybersecurity",desc:"Security reviews and hardening built into every project."},
+      {title:"System Architecture",desc:"Designs that anticipate scale, with clear boundaries and data flow."},
+      {title:"UI/UX Design",desc:"Interfaces built around how people actually use them."},
+      {title:"Software Consulting",desc:"Guidance on scoping a build and planning what comes next."}
+    ]
+  }
 };
