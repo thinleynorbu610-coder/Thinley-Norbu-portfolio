@@ -166,7 +166,38 @@ html[data-theme="light"] .brand-logo{filter:none}
 .portrait-mark{width:9px;height:9px;border-radius:50%;background:#50D69A;box-shadow:0 0 0 5px rgba(80,214,154,.12)}
 .badge-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--glow-mint);color:var(--mint);font-size:20px}
 @media (max-width:960px){.hero-visual{min-height:clamp(340px,72vw,510px)}}
-@media (max-width:520px){.hero-visual{min-height:330px;margin-inline:-8px}.portrait-caption{left:4px;bottom:8%}.portrait-badge{right:4px;top:13%}.portrait-caption,.portrait-badge{padding:10px 12px}}
+/* phones & tablets: the intro fills the first screen (ending at the two buttons);
+   the portrait waits below the fold and fades up as you scroll to it */
+.scroll-cue{display:none}
+@media (max-width:960px){
+  .hero{padding-top:0}
+  .hero-grid{gap:0}
+  .hero-text{position:relative;min-height:100vh;min-height:100svh;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:96px 0 84px}
+  .hero-visual{margin-top:clamp(12px,4vw,32px)}
+  .scroll-cue{display:block;position:absolute;left:50%;bottom:26px;translate:-50% 0;width:26px;height:42px;border:1.5px solid var(--edge-hi);border-radius:14px}
+  .scroll-cue span{position:absolute;left:50%;top:9px;width:4px;height:8px;margin-left:-2px;border-radius:2px;background:var(--mint)}
+}
+@media (max-width:960px) and (prefers-reduced-motion:no-preference){
+  .scroll-cue span{animation:cue 1.8s var(--ease) infinite}
+  @keyframes cue{0%{opacity:0;transform:translateY(0)}30%{opacity:1}80%,100%{opacity:0;transform:translateY(14px)}}
+}
+/* short phones: tighter rhythm so the buttons still land on the first screen */
+@media (max-width:960px) and (max-height:760px){
+  .hero-text{padding:84px 0 70px}
+  .hero .pill{margin-bottom:16px}
+  .hero h1{margin-bottom:12px}
+  .hero .role{margin-bottom:14px}
+  .hero .intro{margin-bottom:22px;line-height:1.55}
+  .scroll-cue{bottom:16px}
+}
+/* narrow phones: keep both buttons on one row */
+@media (max-width:520px){
+  .hero .btn-row{flex-wrap:nowrap;gap:10px;width:100%}
+  .hero .btn{flex:1 1 0;justify-content:center;white-space:nowrap;padding:13px 10px;gap:8px;font-size:15px}
+}
+@media (max-width:340px){.hero .btn-row{gap:8px}.hero .btn{padding:12px 6px;gap:6px;font-size:13.5px}.hero .btn svg{width:14px;height:14px}.hero .pill{margin-bottom:12px}}
+@media (max-width:960px) and (max-height:560px){.hero-text{min-height:0;padding:96px 0 48px}.scroll-cue{display:none}}
+@media (max-width:520px){.hero-visual{min-height:clamp(360px,108vw,460px);margin-inline:-8px}.portrait-caption{left:4px;bottom:8%}.portrait-badge{right:4px;top:13%}.portrait-caption,.portrait-badge{padding:10px 12px}}
 
 /* ══════════════ STATS ══════════════ */
 .stats{display:grid;gap:14px;grid-template-columns:repeat(4,1fr)}
