@@ -197,7 +197,7 @@ html[data-theme="light"] .brand-logo{filter:none}
 }
 @media (max-width:340px){.hero .btn-row{gap:8px}.hero .btn{padding:12px 6px;gap:6px;font-size:13.5px}.hero .btn svg{width:14px;height:14px}.hero .pill{margin-bottom:12px}}
 @media (max-width:960px) and (max-height:560px){.hero-text{min-height:0;padding:96px 0 48px}.scroll-cue{display:none}}
-@media (max-width:520px){.hero-visual{min-height:clamp(360px,108vw,460px);margin-inline:-8px}.portrait-caption{left:4px;bottom:8%}.portrait-badge{right:4px;top:13%}.portrait-caption,.portrait-badge{padding:10px 12px}}
+@media (max-width:520px){.hero-visual{min-height:clamp(360px,108vw,460px);margin-inline:-8px}.portrait-caption{left:4px;bottom:8%}.portrait-badge{right:4px;top:46%}.portrait-caption,.portrait-badge{padding:10px 12px}}
 
 /* ══════════════ STATS ══════════════ */
 .stats{display:grid;gap:14px;grid-template-columns:repeat(4,1fr)}
